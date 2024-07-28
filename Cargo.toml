@@ -1,0 +1,8 @@
+[package]
+name = "linearize"
+description = "Simple on-line linearizability checker"
+version = "0.1.0"
+edition = "2021"
+authors = ["Guanzhou Hu <me@josehu.com>"]
+
+[dependencies]
