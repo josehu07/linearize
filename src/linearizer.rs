@@ -7,6 +7,7 @@ use std::mem;
 use crate::{Node, OpSpan, Possibility};
 
 /// On-line per-object linearizability checker.
+#[derive(Debug, Clone)]
 pub struct Linearizer {
     /// Number of nodes.
     num_nodes: usize,

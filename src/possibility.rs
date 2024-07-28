@@ -16,10 +16,10 @@ use crate::{Node, OpInputs, OpResult, OpSpan, Value};
 ///       head; the lineage history, if needed, can be stored similarly
 #[derive(Debug, Clone)]
 pub(crate) struct Possibility {
-    /// Current body value; `None` if empty.
-    current_body: Option<Value>,
+    /// Current object value; `None` if empty.
+    current_val: Option<Value>,
 
-    /// Linear history of operations applied that led to `current_body`.
+    /// Linear history of operations applied that led to `current_val`.
     lineage_history: Vec<(Node, OpSpan)>,
 
     /// Node-indexed queues of operations to be checked from that node.
@@ -30,7 +30,7 @@ impl Possibility {
     /// Make an initial empty state with null value.
     pub(crate) fn initial(num_nodes: usize) -> Self {
         Possibility {
-            current_body: None,
+            current_val: None,
             lineage_history: vec![],
             queued_spans: (0..num_nodes).map(|_| VecDeque::new()).collect(),
         }
@@ -98,7 +98,7 @@ impl Possibility {
                         new_state
                             .lineage_history
                             .push((node, new_state.queued_spans[node].pop_front().unwrap()));
-                        new_state.current_body = Some(val);
+                        new_state.current_val = Some(val);
                         Some(new_state)
                     }
                     _ => {
@@ -111,7 +111,7 @@ impl Possibility {
             OpInputs::Get => {
                 match op.result {
                     OpResult::Get { val } => {
-                        if self.current_body == val {
+                        if self.current_val == val {
                             // successful Get with matching value
                             let mut new_state = self.clone();
                             new_state
@@ -138,7 +138,7 @@ impl fmt::Display for Possibility {
         write!(
             f,
             "{}<|[",
-            if let Some(val) = self.current_body {
+            if let Some(val) = self.current_val {
                 val.to_string()
             } else {
                 "nil".into()
@@ -163,7 +163,7 @@ impl fmt::Display for Possibility {
 
 impl cmp::PartialEq for Possibility {
     fn eq(&self, other: &Self) -> bool {
-        self.current_body == other.current_body
+        self.current_val == other.current_val
             && self.queued_spans.len() == other.queued_spans.len()
             && self
                 .queued_spans
@@ -180,7 +180,7 @@ impl cmp::Eq for Possibility {}
 
 impl hash::Hash for Possibility {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.current_body.hash(state);
+        self.current_val.hash(state);
         self.queued_spans.len().hash(state);
         for q in &self.queued_spans {
             q.len().hash(state);
