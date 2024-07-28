@@ -52,7 +52,7 @@ Here is an example of a valid possibility, assuming a known number of 2 nodes `n
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<1>Put(7)<4>` ~ `<3>Get(7)<6>`  |  7  |  n0 -> `<10>Get(8)<11>` ~ `<13>Put(9)<17>` </br> n1 ->
+`<1>Put(7)<4>` ~ `<3>Get(7)<6>`  |  7  |  n0 ➛ `<10>Get(8)<11>` ~ `<13>Put(9)<17>` </br> n1 ➛
 
 </div>
 
@@ -62,7 +62,7 @@ The checker starts from an initial set that contains only one initial possibilit
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-&nbsp;  |  nil  |  n0 -> </br> n1 ->
+&nbsp;  |  nil  |  n0 ➛ </br> n1 ➛
 
 </div>
 
@@ -72,7 +72,7 @@ Nodes feed completed operations to the checker. For each operation fed, the chec
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-&nbsp;  |  nil  |  n0 -> `<1>Put(55)<5>` </br> n1 ->
+&nbsp;  |  nil  |  n0 ➛ `<1>Put(55)<5>` </br> n1 ➛
 
 </div>
 
@@ -84,7 +84,7 @@ Say `n1` then feeds a Put(66):
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-&nbsp;  |  nil  |  n0 -> `<1>Put(55)<5>` </br> n1 -> `<3>Put(66)<6>`
+&nbsp;  |  nil  |  n0 ➛ `<1>Put(55)<5>` </br> n1 ➛ `<3>Put(66)<6>`
 
 </div>
 
@@ -94,8 +94,8 @@ Now we know at least one operation from every node for this possibility, meaning
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<1>Put(55)<5>`  |  55  |  n0 -> </br> n1 -> `<3>Put(66)<6>`
-`<3>Put(66)<6>`  |  66  |  n0 -> `<1>Put(55)<5>` </br> n1 ->
+`<1>Put(55)<5>`  |  55  |  n0 ➛ </br> n1 ➛ `<3>Put(66)<6>`
+`<3>Put(66)<6>`  |  66  |  n0 ➛ `<1>Put(55)<5>` </br> n1 ➛
 
 </div>
 
@@ -107,8 +107,8 @@ Say `n1` then feeds a Get(77) that started late:
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<1>Put(55)<5>`  |  55  |  n0 -> </br> n1 -> `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
-`<3>Put(66)<6>`  |  66  |  n0 -> `<1>Put(55)<5>` </br> n1 -> `<10>Get(77)<12>`
+`<1>Put(55)<5>`  |  55  |  n0 ➛ </br> n1 ➛ `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
+`<3>Put(66)<6>`  |  66  |  n0 ➛ `<1>Put(55)<5>` </br> n1 ➛ `<10>Get(77)<12>`
 
 </div>
 
@@ -118,8 +118,8 @@ while this may look like a linearizability violation at first glance, we can't s
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<1>Put(55)<5>`  |  55  |  n0 -> </br> n1 -> `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
-`<3>Put(66)<6>` ~ `<1>Put(55)<5>`  |  55  |  n0 -> </br> n1 -> `<10>Get(77)<12>`
+`<1>Put(55)<5>`  |  55  |  n0 ➛ </br> n1 ➛ `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
+`<3>Put(66)<6>` ~ `<1>Put(55)<5>`  |  55  |  n0 ➛ </br> n1 ➛ `<10>Get(77)<12>`
 
 </div>
 
@@ -129,8 +129,8 @@ Say `n0` then feeds a Put(77) which indeed happened in the middle:
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<1>Put(55)<5>`  |  55  |  n0 -> `<7>Put(77)<9>` </br> n1 -> `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
-`<3>Put(66)<6>` ~ `<1>Put(55)<5>`  |  55  |  n0 -> `<7>Put(77)<9>` </br> n1 -> `<10>Get(77)<12>`
+`<1>Put(55)<5>`  |  55  |  n0 ➛ `<7>Put(77)<9>` </br> n1 ➛ `<3>Put(66)<6>` ~ `<10>Get(77)<12>`
+`<3>Put(66)<6>` ~ `<1>Put(55)<5>`  |  55  |  n0 ➛ `<7>Put(77)<9>` </br> n1 ➛ `<10>Get(77)<12>`
 
 </div>
 
@@ -140,7 +140,7 @@ After stepping all current possibilities exhaustively, the set reduces to one po
 
 lineage history | current value | per-node queues
 :-- | :-: | :--
-`<3>Put(66)<6>` ~ `<1>Put(55)<5>` ~ `<7>Put(77)<9>`  |  77  |  n0 -> </br> n1 -> `<10>Get(77)<12>`
+`<3>Put(66)<6>` ~ `<1>Put(55)<5>` ~ `<7>Put(77)<9>`  |  77  |  n0 ➛ </br> n1 ➛ `<10>Get(77)<12>`
 
 </div>
 
