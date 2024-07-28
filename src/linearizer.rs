@@ -39,30 +39,35 @@ impl Linearizer {
             return false;
         }
 
-        let mut pending: HashSet<Possibility> = self
-            .possibilities
-            .drain()
-            .map(|mut p| {
-                p.append_span(node, span.clone());
-                p
-            })
-            .collect();
+        // append the new span to all current states, then put all steppable
+        // states into `pending` and others into `self.possibilities`
+        let mut pending = HashSet::new();
         let mut new_pending = HashSet::new();
+        for possibility in self.possibilities.drain().map(|mut p| {
+            p.append_span(node, span.clone());
+            p
+        }) {
+            if possibility.can_step() {
+                pending.insert(possibility);
+            } else {
+                new_pending.insert(possibility);
+            }
+        }
+        mem::swap(&mut self.possibilities, &mut new_pending);
 
+        // recursively call `.step()` until no pending states left
+        //
         // TODO: for each feed, the loop below obviously has the potential to
         //       be parallelized to boost checker performance
         while !pending.is_empty() {
             for possibility in pending.drain() {
-                if possibility.can_step() {
-                    for new_possibility in possibility.step() {
-                        if new_possibility.can_step() {
-                            new_pending.insert(new_possibility);
-                        } else {
-                            self.possibilities.insert(new_possibility);
-                        }
+                debug_assert!(possibility.can_step());
+                for new_possibility in possibility.step() {
+                    if new_possibility.can_step() {
+                        new_pending.insert(new_possibility);
+                    } else {
+                        self.possibilities.insert(new_possibility);
                     }
-                } else {
-                    self.possibilities.insert(possibility);
                 }
             }
             mem::swap(&mut pending, &mut new_pending);
