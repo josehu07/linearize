@@ -6,3 +6,6 @@ pub use linearizer::Linearizer;
 
 mod possibility;
 use possibility::Possibility;
+
+#[cfg(test)]
+mod tests;
