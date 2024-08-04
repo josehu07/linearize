@@ -7,12 +7,14 @@
 
 This repo demonstrates a simple yet effective algorithm of an **on-line linearizability checker** for concurrent Put/Get operations by a known number of nodes. The `linearize` Rust crate delivers an implementation of this algorithm.
 
-## Definition
+## Linearizability
 
-With multiple *nodes* issuing and completing concurrent *operations* on a single object, *linearizability* is defined as the conjunction of the following two conditions:
+With multiple *nodes* issuing and completing concurrent *operations*, *linearizability* is defined as the conjunction of the following two conditions:
 
 * there must exist an equivalent global *sequential* order of all operations, where each operation observes the results of all preceding operations, and
 * the global order must obey the *real-time* property: if an operation starts later than another one finishes (based on their timestamps), it must be placed after that one in the global order.
+
+For simplicity, we limit our discussion on a single object. The core idea behind this algorithm is to maintain a set of still-possible states (hereafter called *possibilities*) given the operation results observed. If this set ever becomes empty after feeding an operation result in, then we know linearizability has been violated. This shares similarities with model checking approaches such as in TLA⁺.
 
 ## Usage
 
@@ -25,12 +27,10 @@ cargo test
 Run demo examples:
 
 ```text
-cargo run --example readme|succeed|violate
+cargo run --example readme|succeed|violate|failput|pausing
 ```
 
-## Algorithm
-
-The core idea is to maintain a set of still-possible states (hereafter called *possibilities*) given the operation results observed. If this set ever becomes empty after feeding an operation result in, then linearizability has been violated.
+## Definitions
 
 Each possibility is a "snapshot" of the object's value after successfully applying a sequence of operations. More precisely, a possibility tracks the following three things:
 
@@ -55,6 +55,8 @@ lineage history | current value | per-node queues
 `<1>Put(7)<4>` ~ `<3>Get(7)<6>`  |  7  |  n0 ➛ `<10>Get(8)<11>` ~ `<13>Put(9)<17>` </br> n1 ➛
 
 </div>
+
+## Algorithm
 
 The checker starts from an initial set that contains only one initial possibility.
 
