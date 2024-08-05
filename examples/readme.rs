@@ -6,9 +6,9 @@ fn main() {
     let mut linearizer = Linearizer::new(2);
 
     let node_ops: [(Node, OpSpan); 3] = [
-        (0, OpSpan::new(Some(55), None, (1, 5))),
-        (1, OpSpan::new(Some(66), None, (3, 6))),
-        (1, OpSpan::new(None, Some(77), (10, 12))),
+        (0, OpSpan::put(55, 1, 5)),
+        (1, OpSpan::put(66, 3, 6)),
+        (1, OpSpan::get(Some(77), 10, 12)),
     ];
 
     for (node, span) in node_ops.into_iter() {
@@ -19,7 +19,7 @@ fn main() {
     }
 
     {
-        let op_a = OpSpan::new(Some(77), None, (7, 9));
+        let op_a = OpSpan::put(77, 7, 9);
         println!();
         println!("If n0 feeds {:?}:", op_a);
         println!();
@@ -30,7 +30,7 @@ fn main() {
     }
 
     {
-        let op_b = OpSpan::new(Some(77), None, (13, 14));
+        let op_b = OpSpan::put(77, 13, 14);
         println!();
         println!("If, instead, n0 feeds {:?}:", op_b);
         println!();

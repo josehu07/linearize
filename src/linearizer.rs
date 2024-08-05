@@ -33,7 +33,7 @@ impl Linearizer {
     /// otherwise returns false, meaning linearizability has been violated.
     pub fn feed_span(&mut self, node: Node, span: OpSpan) -> bool {
         assert!(node < self.num_nodes);
-        assert!((span.ts_ack > span.ts_req) || (span.is_terminate()));
+        assert!((span.ts_ack > span.ts_req) || (!span.is_normal()));
 
         if self.possibilities.is_empty() {
             // already violated, always return false

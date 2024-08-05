@@ -17,6 +17,9 @@ pub type Timestamp = u64;
 pub enum OpInputs {
     Put { val: Value },
     Get,
+    Fail,    // leaves value uncertain
+    Stopped, // indicates node temporarily stopped
+    Resumed, // indicates node execution resumed
 }
 
 /// Operation result enum.
@@ -26,93 +29,86 @@ pub enum OpResult {
     Get {
         val: Option<Value>, // `None` if not found
     },
+    Dummy,
 }
 
-/// An operation span from a node with start-end timestamps.
+/// An operation span with start-end timestamps.
 #[derive(Clone)]
 pub struct OpSpan {
-    pub inputs: OpInputs,
-    pub result: OpResult,
-    pub ts_req: Timestamp,
-    pub ts_ack: Timestamp,
+    pub(crate) inputs: OpInputs,
+    pub(crate) result: OpResult,
+    pub(crate) ts_req: Timestamp,
+    pub(crate) ts_ack: Timestamp,
 }
 
 impl OpSpan {
-    /// Convenience constructor for `OpSpan`.
-    pub fn new(
-        val_i: Option<Value>,            // input value; `None` means Get, else Put
-        val_o: Option<Value>,            // result value
-        ts_span: (Timestamp, Timestamp), // (ts_req, ts_ack)
-    ) -> Self {
-        let (ts_req, ts_ack) = ts_span;
+    /// Create an `OpSpan` for a successful Put operation.
+    pub fn put(val_i: Value, ts_req: Timestamp, ts_ack: Timestamp) -> Self {
         assert!(ts_ack > ts_req);
-
-        let inputs = if let Some(val) = val_i {
-            OpInputs::Put { val }
-        } else {
-            OpInputs::Get
-        };
-        let result = if val_i.is_some() {
-            OpResult::Put
-        } else {
-            OpResult::Get { val: val_o }
-        };
-
         OpSpan {
-            inputs,
-            result,
+            inputs: OpInputs::Put { val: val_i },
+            result: OpResult::Put,
             ts_req,
             ts_ack,
         }
     }
 
-    /// Special constructor for an `OpSpan` that indicates termination of a
-    /// node's execution, by assigning an "infinite" timestamp.
-    pub fn terminate() -> Self {
+    /// Create an `OpSpan` for a successful Get operation.
+    pub fn get(val_o: Option<Value>, ts_req: Timestamp, ts_ack: Timestamp) -> Self {
+        assert!(ts_ack > ts_req);
         OpSpan {
             inputs: OpInputs::Get,
-            result: OpResult::Put,
-            ts_req: Timestamp::MAX,
-            ts_ack: Timestamp::MAX,
+            result: OpResult::Get { val: val_o },
+            ts_req,
+            ts_ack,
         }
     }
 
-    /// Check if an `OpSpan` is termination.
-    pub fn is_terminate(&self) -> bool {
-        self.ts_req == Timestamp::MAX
+    /// Create an `OpSpan` for a failed operation, leaving value uncertain.
+    pub fn fail(ts_req: Timestamp, ts_ack: Timestamp) -> Self {
+        assert!(ts_ack > ts_req);
+        OpSpan {
+            inputs: OpInputs::Fail,
+            result: OpResult::Dummy,
+            ts_req,
+            ts_ack,
+        }
+    }
+
+    /// Special constructor for an `OpSpan` that indicates stopping of a
+    /// node's execution.
+    pub fn stopped(ts: Timestamp) -> Self {
+        OpSpan {
+            inputs: OpInputs::Stopped,
+            result: OpResult::Dummy,
+            ts_req: ts,
+            ts_ack: ts,
+        }
+    }
+
+    /// Special constructor for an `OpSpan` that indicates resuming of a
+    /// node's execution.
+    pub fn resumed(ts: Timestamp) -> Self {
+        OpSpan {
+            inputs: OpInputs::Resumed,
+            result: OpResult::Dummy,
+            ts_req: ts,
+            ts_ack: ts,
+        }
+    }
+
+    /// Check if an `OpSpan` is a normal operation.
+    pub fn is_normal(&self) -> bool {
+        matches!(
+            self.inputs,
+            OpInputs::Put { .. } | OpInputs::Get | OpInputs::Fail
+        )
     }
 }
 
 impl fmt::Debug for OpSpan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}{}<{}>-<{}>",
-            if let OpInputs::Put { val } = self.inputs {
-                format!("Put({})", val)
-            } else {
-                "Get".into()
-            },
-            if let OpResult::Get { val } = self.result {
-                if let Some(val) = val {
-                    format!("({})", val)
-                } else {
-                    "(nil)".into()
-                }
-            } else {
-                "".into()
-            },
-            if self.is_terminate() {
-                "X".into()
-            } else {
-                self.ts_req.to_string()
-            },
-            if self.is_terminate() {
-                "X".into()
-            } else {
-                self.ts_ack.to_string()
-            },
-        )
+        write!(f, "{}<{}>-<{}>", self, self.ts_req, self.ts_ack,)
     }
 }
 
@@ -121,10 +117,12 @@ impl fmt::Display for OpSpan {
         write!(
             f,
             "{}{}",
-            if let OpInputs::Put { val } = self.inputs {
-                format!("Put({})", val)
-            } else {
-                "Get".into()
+            match self.inputs {
+                OpInputs::Put { val } => format!("Put({})", val),
+                OpInputs::Get => "Get".into(),
+                OpInputs::Fail => "Fail".into(),
+                OpInputs::Stopped => "Stopped".into(),
+                OpInputs::Resumed => "Resumed".into(),
             },
             if let OpResult::Get { val } = self.result {
                 if let Some(val) = val {

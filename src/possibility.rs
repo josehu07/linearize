@@ -16,8 +16,11 @@ use crate::{Node, OpInputs, OpResult, OpSpan, Value};
 ///       head; the lineage history, if needed, can be stored similarly
 #[derive(Debug, Clone)]
 pub(crate) struct Possibility {
-    /// Current object value; `None` if empty.
-    current_val: Option<Value>,
+    /// Current object value. Cases:
+    ///   - `None`: value uncertain, anything matches
+    ///   - `Some(None)`: value is nil
+    ///   - `Some(val)`: value is non-nil `val`
+    current_val: Option<Option<Value>>,
 
     /// Linear history of operations applied that led to `current_val`.
     lineage_history: Vec<(Node, OpSpan)>,
@@ -30,7 +33,7 @@ impl Possibility {
     /// Make an initial empty state with null value.
     pub(crate) fn initial(num_nodes: usize) -> Self {
         Possibility {
-            current_val: None,
+            current_val: Some(None),
             lineage_history: vec![],
             queued_spans: (0..num_nodes).map(|_| VecDeque::new()).collect(),
         }
@@ -39,40 +42,57 @@ impl Possibility {
     /// Add a new span to its corresponding queue.
     pub(crate) fn append_span(&mut self, node: Node, span: OpSpan) {
         debug_assert!(node < self.queued_spans.len());
-        debug_assert!((span.ts_ack > span.ts_req) || (span.is_terminate()));
-        if let Some(head) = self.queued_spans[node].front() {
+        debug_assert!((span.ts_ack > span.ts_req) || (!span.is_normal()));
+        if let Some(tail) = self.queued_spans[node].back() {
             // for every node, its submitted operations must naturally follow
             // a sequential order already
-            assert!(span.ts_req > head.ts_ack);
+            assert!(span.ts_req > tail.ts_ack);
+            if matches!(span.inputs, OpInputs::Resumed) {
+                assert!(matches!(tail.inputs, OpInputs::Stopped));
+            } else {
+                assert!(tail.is_normal());
+            }
         }
 
-        self.queued_spans[node].push_back(span);
+        if matches!(span.inputs, OpInputs::Resumed) {
+            self.queued_spans[node].pop_back();
+        } else {
+            self.queued_spans[node].push_back(span);
+        }
     }
 
     /// Check if I can consume myself and make a step into further state(s).
     pub(crate) fn can_step(&self) -> bool {
-        // === have seen at least 1 op from every node
+        // === have seen at least 1 normal op from every node
         (!self.queued_spans.iter().any(|q| q.is_empty()))
             && (!self
                 .queued_spans
                 .iter()
-                .all(|q| q.front().unwrap().is_terminate()))
+                .all(|q| !q.front().unwrap().is_normal()))
     }
 
     /// Consume myself and step into 0-to-some further possible state(s). The
     /// resulting states might still be steppable.
     pub(crate) fn step(self) -> HashSet<Self> {
-        assert!(self.can_step());
-        let mut new_states = HashSet::new();
-
+        debug_assert!(self.can_step());
         let min_ts_ack = self
             .queued_spans
             .iter()
-            .map(|q| q.front().unwrap().ts_ack)
+            .filter_map(|q| {
+                let head = q.front().unwrap();
+                if head.is_normal() {
+                    Some(head.ts_ack)
+                } else {
+                    None
+                }
+            })
             .min()
             .unwrap();
+
+        let mut new_states = HashSet::new();
         for (node, q) in self.queued_spans.iter().enumerate() {
-            if q.front().unwrap().ts_req < min_ts_ack {
+            let head = q.front().unwrap();
+            if head.is_normal() && head.ts_req < min_ts_ack {
                 // possible candidate as the next op
                 if let Some(new_state) = self.apply_head(node as Node) {
                     new_states.insert(new_state);
@@ -88,7 +108,6 @@ impl Possibility {
     /// error or value mismatch.
     fn apply_head(&self, node: Node) -> Option<Self> {
         let op = self.queued_spans[node].front().unwrap();
-
         match op.inputs {
             OpInputs::Put { val } => {
                 match op.result {
@@ -98,20 +117,17 @@ impl Possibility {
                         new_state
                             .lineage_history
                             .push((node, new_state.queued_spans[node].pop_front().unwrap()));
-                        new_state.current_val = Some(val);
+                        new_state.current_val = Some(Some(val));
                         Some(new_state)
                     }
-                    _ => {
-                        // Put with unexpected result
-                        None
-                    }
+                    _ => None,
                 }
             }
 
             OpInputs::Get => {
                 match op.result {
                     OpResult::Get { val } => {
-                        if self.current_val == val {
+                        if self.current_val.is_none() || self.current_val.unwrap() == val {
                             // successful Get with matching value
                             let mut new_state = self.clone();
                             new_state
@@ -123,11 +139,22 @@ impl Possibility {
                             None
                         }
                     }
-                    _ => {
-                        // Get with unexpected result
-                        None
-                    }
+                    _ => None,
                 }
+            }
+
+            OpInputs::Fail => {
+                // failed op leaves value uncertain
+                let mut new_state = self.clone();
+                new_state
+                    .lineage_history
+                    .push((node, new_state.queued_spans[node].pop_front().unwrap()));
+                new_state.current_val = None;
+                Some(new_state)
+            }
+
+            _ => {
+                unreachable!("unexpected op chosen to be applied: {}", op);
             }
         }
     }
@@ -138,10 +165,10 @@ impl fmt::Display for Possibility {
         write!(
             f,
             "{}<|[",
-            if let Some(val) = self.current_val {
-                val.to_string()
-            } else {
-                "nil".into()
+            match self.current_val {
+                Some(Some(val)) => val.to_string(),
+                Some(None) => "nil".into(),
+                None => "???".into(),
             }
         )?;
         for (i, q) in self.queued_spans.iter().enumerate() {

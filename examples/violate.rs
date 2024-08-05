@@ -6,13 +6,13 @@ fn main() {
     let mut linearizer = Linearizer::new(3);
 
     let node_ops: [(Node, OpSpan); 7] = [
-        (0, OpSpan::new(Some(8), None, (100, 105))),
-        (1, OpSpan::new(Some(7), None, (104, 106))),
-        (2, OpSpan::new(Some(9), None, (107, 110))),
-        (0, OpSpan::new(None, Some(7), (111, 113))),
-        (2, OpSpan::terminate()),
-        (0, OpSpan::terminate()),
-        (1, OpSpan::terminate()),
+        (0, OpSpan::put(8, 100, 105)),
+        (1, OpSpan::put(7, 104, 106)),
+        (2, OpSpan::put(9, 107, 110)),
+        (0, OpSpan::get(Some(7), 111, 113)),
+        (2, OpSpan::stopped(112)),
+        (0, OpSpan::stopped(115)),
+        (1, OpSpan::stopped(114)),
     ];
 
     for (node, span) in node_ops.into_iter() {

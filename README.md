@@ -27,10 +27,19 @@ cargo test
 Run demo examples:
 
 ```text
-cargo run --example readme|succeed|violate|failput|pausing
+cargo run --example readme|succeed|violate|complex
 ```
 
-## Definitions
+See the documentation of publicly-exposed structs for more details.
+
+## Algorithm
+
+Click below for an explanation of the algorithm with a walk-through example.
+
+<details>
+<summary>Algorithm explanation with a walk-through example...</summary>
+
+### Definitions
 
 Each possibility is a "snapshot" of the object's value after successfully applying a sequence of operations. More precisely, a possibility tracks the following three things:
 
@@ -56,7 +65,7 @@ lineage history | current value | per-node queues
 
 </div>
 
-## Algorithm
+### Walk-Through
 
 The checker starts from an initial set that contains only one initial possibility.
 
@@ -147,6 +156,8 @@ lineage history | current value | per-node queues
 </div>
 
 Consider, alternatively, that `n0` instead feeds an arbitrary operation that started at timestamp 13, rather than a Put(77) that started before 12. You should find no valid possibilities left after exhaustive stepping, meaning a linearizability violation is detected: `n1`'s Get that finished at timestamp 12 cannot observe a value of 77.
+
+</details>
 
 ## Optimizations
 
