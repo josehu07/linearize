@@ -5,7 +5,7 @@
 [![Tests status](https://github.com/josehu07/linearize/actions/workflows/tests.yml/badge.svg)](https://github.com/josehu07/linearize/actions?query=josehu07%3Atests)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-This repo demonstrates a simple yet effective algorithm of an **on-line linearizability checker** for concurrent Put/Get operations by a known number of nodes. The `linearize` Rust crate delivers an implementation of this algorithm.
+This repo demonstrates a simple yet effective algorithm of an **on-line linearizability checker** for concurrent Put/Get operations by a known number of nodes. The algorithm is implemented as a `linearize` Rust crate.
 
 ## Linearizability
 

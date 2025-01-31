@@ -9,7 +9,8 @@ pub type Value = u64;
 /// Currently assumes node IDs start from 0 (so can be used directly as index).
 pub type Node = usize;
 
-/// Timestamp type; expected to be monotonically increasing and always unique.
+/// Timestamp type; expected to be **monotonically increasing** and **always
+/// unique**.
 pub type Timestamp = u64;
 
 /// Operation inputs enum.
